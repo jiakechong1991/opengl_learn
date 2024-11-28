@@ -25,14 +25,13 @@ const char *fragmentShaderSource = "#version 410 core\n"
  
 int main()
 {
-    // glfw: initialize and configure
+    // 初始化和配置glfw参数
     glfwInit();  // 初始化glfw
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);  // 设置flfw的参数,告诉他我们使用的是opengl4.1版本
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 设置 opengl工作在 core profile模式
 
- 
-    // 创建指定宽高的窗口
+    // 创建指定宽高的窗口： 宽，高， 窗口名称，NULL，NULL
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
     {
@@ -40,12 +39,12 @@ int main()
         glfwTerminate();
         return -1;
     }
-    // 将窗口的上下文，设置为当前线程的上下文
-    glfwMakeContextCurrent(window);
-    // // 设置渲染视口的大小 glViewport(0, 0, width, height); 做成回调函数，是为了在window发生变化时，重新调用该函数，设置我们的视口大小
+
+    glfwMakeContextCurrent(window);  // 将窗口的上下文，设置为当前线程的上下文
+    //在window首次初始化 或者 发生变化时，调用该函数，重新设置视口大小
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);  
  
-    // glad: load all OpenGL function pointers， 固定写法：初始化glad
+    // 固定写法：初始化glad(在调用opengl函数之前，必须先初始化glad)
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -53,7 +52,7 @@ int main()
     }
  
  
-    /////////////////////////////////////// build and compile our shader program
+    /////////////////////////////////////////////构建 shader program
     //////////////// vertex shader
     int vertexShader = glCreateShader(GL_VERTEX_SHADER); // 创建着色(shader)对象, shader类型是GL_VERTEX_SHADER,即顶点shader
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL); // 把这个着色器源码附加到shader对象。着色器对象，源码字符串数量，源码字符串
@@ -68,7 +67,6 @@ int main()
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
-
 
     //////////////// fragment shader：计算像素的颜色
     int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);  //创建fragement shader
@@ -97,7 +95,7 @@ int main()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
  
-    ////////////////////////////////准备顶点数据
+    /////////////////////////////////////////////准备顶点数据
     float vertices[] = {  // opengl的坐标叫做 标准化设备坐标(Normalized Device Coordinates)，这个三维坐标，要在[-1,1]之间，否则不予处理。
         -0.5f, -0.5f, 0.0f, // left  
          0.5f, -0.5f, 0.0f, // right 
@@ -124,18 +122,20 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
     
 
-    ///////////////////////////////// render loop [渲染循环]
-    // -----------
-    while (!glfwWindowShouldClose(window))  // 检查用户是否要关闭该窗口
+    ///////////////////////////////////// render loop [渲染循环]
+    while (!glfwWindowShouldClose(window))  // 检查用户是否 要关闭该窗口
     {
-        ///////////////// 监控用户按键，然后对应的动作
+        ///////////////////////// 监控 用户按键，然后 执行对应操作
         processInput(window);
  
-        ////////////////// render指令
-        // 使用指定的颜色，清空 window的缓冲区
+
+
+
+        ///////////////////////// render区域
+        ////// 使用指定的颜色，清空 window的缓冲区
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);  // 这是状态设置函数
         // GL_COLOR_BUFFER_BIT：颜色缓冲区，GL_DEPTH_BUFFER_BIT：深度缓冲区 和 GL_STENCIL_BUFFER_BIT：模板缓冲区
-        glClear(GL_COLOR_BUFFER_BIT);   // 这是状态使用函数
+        glClear(GL_COLOR_BUFFER_BIT);   // 这属于状态使用函数
  
         // draw our first triangle
         glUseProgram(shaderProgram); // 激活shaderProgram，怎么画
@@ -144,18 +144,19 @@ int main()
         glDrawArrays(GL_TRIANGLES, 0, 3); // 开始画：调用当前激活的shader, 顶点数据 开始绘制
 
 
-        ////////////// 检查并调用事件，交换缓冲
+
+        //////////////////////// 检查并调用事件，交换缓冲
         /*
         这个swap buffer是有说法的，我们一般使用双缓冲(double buffer)
         1. 如果使用单缓冲容易造成屏幕图像闪烁，因为绘图是从左到右，从上到下 逐渐绘制的，而非瞬间绘制的。这时 单缓冲就会不断的绘制到屏幕上
         2. 双缓冲是，前缓冲 保存上一帧绘制好的图像，并显示到屏幕上。然后 渲染指令在后缓冲上绘制
         3. 当所有渲染指令(在后缓冲上)运行完毕，就交换(swap)前后缓冲，这样屏幕上就能立刻显示图像
         */
-        glfwSwapBuffers(window);  // 将缓冲区的数据，输出到显示器上
+        glfwSwapBuffers(window);  // 将缓冲区的数据，输出到window上
         glfwPollEvents();  //检查是否有 触发事件：键盘输入，鼠标移动，并调用对应的回调函数
     }
  
-    // optional: de-allocate all resources
+    // 程序即将退出，释放资源
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
@@ -166,14 +167,20 @@ int main()
  
 //键盘按键回调函数  
 void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)  //检测 esc按键是否被按下， 按下：GLFW_PRESS  未按下：GLFW_RELEASE
+{   
+    //检测 esc按键是否被按下， 按下：GLFW_PRESS  未按下：GLFW_RELEASE
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)  
         glfwSetWindowShouldClose(window, true);  // 主动关闭window窗口， glfwWindowShouldClose将读到true,
 }
  
 //调整窗口大小回调函数
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    glViewport(0, 0, width, height);
+    // 设置视口(viewport)大小 （默认视口是窗口大小）
+    // 视口是渲染的输出区域，定义了屏幕空间
+    // 我们可以把视口设定成窗口的一个部分，比如只在第一个象限绘制，或者只绘制窗口的一部分
+    // 0，0： 视口左下角， width，height：视口右上角
+    glViewport(0, 0, width/2, height/2);  
+    // std::cout << "我被调用了" << std::endl;
 }
  
