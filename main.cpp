@@ -54,17 +54,17 @@ int main()
  
     /////////////////////////////////////////////构建 shader program
     //////////////// vertex shader
-    int vertexShader = glCreateShader(GL_VERTEX_SHADER); // 创建着色(shader)对象, shader类型是GL_VERTEX_SHADER,即顶点shader
+    // 创建着色(shader)对象, shader类型是GL_VERTEX_SHADER,即顶点shader， 返回 句柄id
+    int vertexShader = glCreateShader(GL_VERTEX_SHADER); 
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL); // 把这个着色器源码附加到shader对象。着色器对象，源码字符串数量，源码字符串
     glCompileShader(vertexShader);  // 编译这个shader
-
     // 检查 shader compile errors
     int success;
     char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);  // 检查shader编译是否成功
     if (!success)
     {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);  // 获取shader编译的日志
         std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
 
@@ -81,11 +81,17 @@ int main()
     }
 
     ///////////////// link shaders
-    int shaderProgram = glCreateProgram(); // shaderProgram[着色器程序对象] 是多个着色器合并之后并最终链接完成的版本
+    int shaderProgram = glCreateProgram(); // 创建 shaderProgram[着色器程序对象], 返回的是句柄id
     glAttachShader(shaderProgram, vertexShader); // 将顶点shader对象 附加 shadeProgram
-    glAttachShader(shaderProgram, fragmentShader);  // 
+    glAttachShader(shaderProgram, fragmentShader); 
+    
+    /* 当把 多个shader link到 着色器程序对象(shader program object)上时，
+    每个shader的输出将会作为下一个shader的输入，最终生成一个完整的渲染管线
+    当输入和输出不匹配时，将得到link错误
+    */
     glLinkProgram(shaderProgram);  // link到 shaderProgram上
-    // check for linking errors
+
+    // 检查 linking errors
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog) ;
@@ -96,7 +102,8 @@ int main()
     glDeleteShader(fragmentShader);
  
     /////////////////////////////////////////////准备顶点数据
-    float vertices[] = {  // opengl的坐标叫做 标准化设备坐标(Normalized Device Coordinates)，这个三维坐标，要在[-1,1]之间，否则不予处理。
+    // opengl的坐标叫做 标准化设备坐标(Normalized Device Coordinates)，这个三维坐标，要在[-1,1]之间，否则不予处理。
+    float vertices[] = {  //顶点数据(Vertex Data)
         -0.5f, -0.5f, 0.0f, // left  
          0.5f, -0.5f, 0.0f, // right 
          0.0f,  0.5f, 0.0f  // top   
@@ -108,28 +115,34 @@ int main()
 	glBindVertexArray(VAO);
 
 	//创建VBO对象[顶点缓冲对象]，把顶点数组复制到一个顶点缓冲中，供OpenGL使用
-    glGenBuffers(1, &VBO);  //【生成】缓冲区
-    glBindBuffer(GL_ARRAY_BUFFER, VBO); // 缓冲【绑定】到GL_ARRAY_BUFFER
+    glGenBuffers(1, &VBO);  //【生成】1个 缓冲区，并将该缓冲区的标识符存储在变量VBO中
+    glBindBuffer(GL_ARRAY_BUFFER, VBO); // 缓冲【绑定】到GL_ARRAY_BUFFER目标
+    // 目标缓冲类型， 数据大小，数据，数据管理方式[希望显卡怎么管理这块数据：
+       // GL_STATIC_DRAW：数据不会或几乎不会改变，
+       // GL_DYNAMIC_DRAW：数据会被改变很多，GL_STREAM_DRAW：数据每次绘制时都会改变  --- 这样显卡就把数据放到 告诉写区域
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // 顶点数据（cpu内存）复制到缓冲(gpu内存)中
  
-	//告诉opengl 如何解释 顶点数据
+	//告诉opengl 如何解释 GPU显存中的顶点数据
+    /*
+    0: 顶点属性的位置值 设置为0， 对应于shader中的layout (location = 0)
+    3：顶点属性的大小，每个顶点有3个值
+    GL_FLOAT：数据类型是浮点型
+    GL_FALSE：是否希望数据被标准化，即归一化到[0,1]或[-1,1]
+    3 * sizeof(float)：步长，表示连续的顶点属性组之间的间隔，因为数据是紧密排列的，所以间隔是3 * sizeof(float)
+    (void*)0： 这么写就行
+    */
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0); // 顶点数据的解释,并写入到VAO中
     glEnableVertexAttribArray(0);  //启动顶点属性，默认是禁用的
  
-    // 解绑VAO
-	glBindVertexArray(0); 
-	// 解绑VBO
+    // 好像是解绑VAO，为其他VAO做准备
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
-    
+	glBindVertexArray(0); 
 
     ///////////////////////////////////// render loop [渲染循环]
     while (!glfwWindowShouldClose(window))  // 检查用户是否 要关闭该窗口
     {
         ///////////////////////// 监控 用户按键，然后 执行对应操作
         processInput(window);
- 
-
-
 
         ///////////////////////// render区域
         ////// 使用指定的颜色，清空 window的缓冲区
@@ -139,7 +152,7 @@ int main()
  
         // draw our first triangle
         glUseProgram(shaderProgram); // 激活shaderProgram，怎么画
-        glBindVertexArray(VAO); // 画什么
+        glBindVertexArray(VAO); // 绑定VAO 画什么
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // 三角形绘制模式：参数1：  参数2：使用线来绘制，
         glDrawArrays(GL_TRIANGLES, 0, 3); // 开始画：调用当前激活的shader, 顶点数据 开始绘制
 
